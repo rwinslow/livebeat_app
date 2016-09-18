@@ -99,7 +99,8 @@ def get_health_status(img):
     hist[0] = 0 # Get rid of first element since it's no. of pixels in img
 
     # Initialize colors
-    red = green = 0
+    red = 0
+    green = 0
     red_sum = int(sum(hist[0:12]))
     green_sum = int(sum(hist[55:65]))
     if red_sum > 0:
@@ -125,7 +126,8 @@ def segmenter(video_path, model, pca, threshold=0.5, seconds_between_frames=60):
     frames = np.arange(0, nframes, seconds_between_frames*fps)
 
     # Check frames
-    timecodes = statuses = []
+    timecodes = []
+    statuses = []
     start_time = end_time = 0
 
     # Run through frames and find segments
@@ -334,7 +336,8 @@ def go():
 
     print(statuses)
     statuses = pd.DataFrame(statuses)
-    statuses.columns = ['frame', 'red', 'green']
+    statuses.columns = ['second', 'red', 'green']
+    statuses['second'] = statuses['second'].apply(lambda x: x/60)
     statuses.to_csv('/Users/Rich/Documents/Twitch/statuses/test.csv')
 
     return render_template(
