@@ -146,7 +146,7 @@ def segmenter(video_id, model, pca, threshold=0.5, seconds_between_frames=60):
     for row in timecodes:
         start, stop = (int(row[0])/fps, int(row[1])/fps)
         # Filter out short segments of 7200 frames (4 * 60 fps * 30 sec)
-        if stop - start > 7200:
+        if stop - start > 120:
             df.loc[(df.index >= start) & (df.index < stop), 'game'] = 1
 
     return df
@@ -261,7 +261,7 @@ def TEMP_HAVE_STAMPS(video_id):
     for row in timecodes:
         start, stop = (row[0]/fps, row[1]/fps)
         # Filter out short segments of 7200 frames (4 * 60 fps * 30 sec)
-        if stop - start > 7200:
+        if stop - start > 120:
             df.loc[(df.index >= start) & (df.index < stop), 'game'] = 1
 
     return df
