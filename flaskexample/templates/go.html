@@ -1,0 +1,20 @@
+{% extends "master.html" %}
+{% block title %} | Watching {{video_id}}{% endblock %}
+{% block content %}
+    <script src= "http://player.twitch.tv/js/embed/v1.js"></script>
+
+    <div id="twitch-player"></div>
+    <div id="scrub" style="background-image: url(/static/graphs/{{video_id}}.png);"></div>
+
+    <script type="text/javascript">
+        var options = {
+            width: 854,
+            height: 480,
+            video: "v{{video_id}}"
+        };
+        var player = new Twitch.Player("twitch-player", options);
+        player.setVolume(0.5);
+        player.addEventListener(Twitch.Player.PAUSE, () => { console.log('Player is paused!'); });
+    </script>
+
+{% endblock %}
