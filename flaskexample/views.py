@@ -153,10 +153,10 @@ def segmenter(video_path, model, pca, threshold=0.5, seconds_between_frames=60):
         features = np.array(features).reshape(1, -1)
         prediction = model.predict(features)
 
-        if prediction >= threshold:
-            statuses.append([i, red, green])
         if prediction >= threshold and not start_time:
             start_time = i
+        if prediction >= threshold and start_time:
+            statuses.append([int(i/fps), red, green])
         if prediction <= threshold and start_time:
             end_time = i
             # Filter out short segments out
@@ -178,7 +178,14 @@ def segmenter(video_path, model, pca, threshold=0.5, seconds_between_frames=60):
         start, stop = (row[0]/fps, row[1]/fps)
         df.loc[(df.index >= start) & (df.index < stop), 'game'] = 1
 
-    return df, statuses
+    statuses.insert(0, [0, 0, 0])
+    statuses.append([int(nframes/fps), 0, 0])
+    status = pd.DataFrame(statuses)
+    status.columns = ['second', 'red', 'green']
+    status['red'] = status['red'].apply(lambda x: x/220).round(2)
+    status['green'] = status['green'].apply(lambda x: -1*x/220).round(2)
+
+    return df, status
 
 def query_to_video(query):
     video_id = re.findall('\/(\d+)', query)[0]
@@ -305,6 +312,10 @@ def build_scrub_plot(target_path, game, chat):
 def index():
     return render_template('master.html')
 
+@app.route('/test')
+def test():
+    return render_template('overlay_test.html')
+
 @app.route('/go', methods=['POST'])
 def go():
     # Define basepath for file locations
@@ -323,7 +334,7 @@ def go():
     negative_path = os.path.join(basepath, 'test_images_non-button')
     model, pca = scene_detection(positive_path, negative_path)
 
-    game, statuses = segmenter(video_path, model, pca)
+    game, status = segmenter(video_path, model, pca)
     # game = TEMP_HAVE_STAMPS(video_id)
 
     # Get chat data
@@ -334,11 +345,7 @@ def go():
     target_path = os.path.join(basepath, '{}.png'.format(video_id))
     build_scrub_plot(target_path, game, chat)
 
-    print(statuses)
-    statuses = pd.DataFrame(statuses)
-    statuses.columns = ['second', 'red', 'green']
-    statuses['second'] = statuses['second'].apply(lambda x: x/60)
-    statuses.to_csv('/Users/Rich/Documents/Twitch/statuses/test.csv')
+    print(status)
 
     return render_template(
         'go.html',

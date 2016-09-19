@@ -153,6 +153,17 @@ form button {
     width: 854px;
 }
 
+#chart-wrap {
+    position: absolute;
+    margin-top: 310px;
+    margin-left: 0;
+    padding-left: 15px;
+}
+
+.c3 {
+    /*background-color: blue;*/
+}
+
 /* ==========================================================================
    Helper classes
    ========================================================================== */
