@@ -95,14 +95,16 @@ def get_health_status(img):
 
     img = pl_status[:,:,::-1] # Put player status from RGB to BGR for OpenCV
     hsv = cv2.cvtColor(img,cv2.COLOR_BGR2HSV)
-    hist = cv2.calcHist([hsv], [0], None, [256], [0,256])
-    hist[0] = 0 # Get rid of first element since it's no. of pixels in img
+    h = cv2.calcHist([hsv], [0], None, [256], [0,256])
+    s = cv2.calcHist([hsv], [1], None, [256], [0,256])
+    v = cv2.calcHist([hsv], [2], None, [256], [0,256])
+    hist[0] = 0 # Get rid of first element since it's black
 
     # Initialize colors
     red = 0
     green = 0
-    red_sum = int(sum(hist[0:12]))
-    green_sum = int(sum(hist[55:65]))
+    red_sum = int(sum(v[115:140]))
+    green_sum = int(sum(v[85:105]))
     if red_sum > 0:
         red = red_sum
     if green_sum > 0:
@@ -173,8 +175,9 @@ def segmenter(video_path, model, pca, threshold=0.5, seconds_between_frames=60):
     status = pd.DataFrame(statuses)
     status.columns = ['second', 'red', 'green', 'game']
 
-    status['red'] = status['red'].apply(lambda x: x/220).round(2)
-    status['green'] = status['green'].apply(lambda x: -1*x/220).round(2)
+    full_life = 220
+    status['red'] = status['red'].apply(lambda x: x/full_life).round(2)
+    status['green'] = status['green'].apply(lambda x: -1*x/full_life).round(2)
 
     return status
 
@@ -182,7 +185,7 @@ def query_to_video(query):
     video_id = re.findall('\/(\d+)', query)[0]
     return video_id
 
-def compile_chat(chat_path):
+def compile_chat(chat_path, seconds_per_bin=60):
     def agg_chat(data):
         """Aggregate JSON chat data into a row"""
         attr = data['attributes']
@@ -228,11 +231,22 @@ def compile_chat(chat_path):
     minimum = df['timestamp'].min()
     maximum = df['timestamp'].max()
     df['timestamp'] = df['timestamp'].apply(lambda x: x - minimum)
-    df['secondstamp'] = df['timestamp'].apply(lambda x: int(round(x/1000)))
+    df['secondstamp'] = df['timestamp'].apply(
+        lambda x: int(round(x/1000/seconds_per_bin)*seconds_per_bin)
+    )
 
     # Create chat frequency data frame where index is no. of seconds into video
     chat_freq = pd.DataFrame(df['secondstamp'].value_counts().sort_index())
     chat_freq.columns = ['frequency']
+
+    # Normalize frequency for plotting
+    _max = chat_freq['frequency'].max()
+    _min = chat_freq['frequency'].min()
+    chat_freq['frequency'] = chat_freq['frequency'].apply(
+        lambda x: (x - _min) / (_max - _min)
+    )
+
+    chat_freq.to_csv('/Users/Rich/Documents/Twitch/chat_scale/test.csv')
 
     return chat_freq
 
@@ -329,6 +343,7 @@ def go():
     model, pca = scene_detection(positive_path, negative_path)
 
     status = segmenter(video_path, model, pca)
+    status.to_csv('/Users/Rich/Documents/Twitch/statuses/test_value.csv')
     # game = TEMP_HAVE_STAMPS(video_id)
 
     # Build image for scrub plot
