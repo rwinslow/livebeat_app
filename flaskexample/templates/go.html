@@ -3,8 +3,12 @@
 {% block content %}
     <script src= "http://player.twitch.tv/js/embed/v1.js"></script>
 
-    <div id="twitch-player"></div>
-    <div id="scrub" style="background-image: url(/static/graphs/{{video_id}}.png);"></div>
+    <div id="visuals">
+        <div id="chart-wrap">
+            <div id="chart"></div>
+        </div>
+        <div id="twitch-player"></div>
+    </div>
 
     <script type="text/javascript">
         var options = {
@@ -15,6 +19,50 @@
         var player = new Twitch.Player("twitch-player", options);
         player.setVolume(0.5);
         player.addEventListener(Twitch.Player.PAUSE, () => { console.log('Player is paused!'); });
+    </script>
+
+    <script type="text/javascript">
+    var chart = c3.generate({
+        bindto: '#chart',
+        data: {
+            x: 'x',
+            columns: [
+                ['x', {{ graph_x }}],
+                ['red', {{ graph_red }}],
+                ['green', {{ graph_green }}],
+                ['chat', {{ graph_chat }}]
+            ],
+            type: 'bar',
+            types: {
+                chat: 'area'
+            }
+            groups: [
+                ['red', 'green']
+            ],
+            colors: {
+                red: 'red',
+                green: 'green'
+            }
+        },
+        size: {
+            width: 824,
+            height: 110
+        },
+        padding: {
+            left: 0,
+            right: 0
+        },
+        bar: {
+            width: 1
+        },
+        axis: {
+          x: { show: false },
+          y: { show: false }
+          },
+        legend: {
+          show: false
+          }
+        });
     </script>
 
 {% endblock %}

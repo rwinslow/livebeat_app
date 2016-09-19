@@ -162,7 +162,14 @@ def segmenter(video_path, model, pca, threshold=0.5, seconds_between_frames=60):
     # Close video handle to release thread and buffer
     vid.close()
 
-    # Process timecodes and flip switches for found game segments
+    # Process status results and filter out short sections
+    for i in range(1, len(statuses)-3):
+        if (statuses[i][3] == 1
+            and statuses[i-1][3] == 0
+            and statuses[i+2][3] == 0):
+            statuses[i][1:] = (0, 0, 0)
+            statuses[i+1][1:] = (0, 0, 0)
+
     status = pd.DataFrame(statuses)
     status.columns = ['second', 'red', 'green', 'game']
 
@@ -328,10 +335,11 @@ def go():
     basepath = '/Users/Rich/Documents/Flask/flaskexample/static/graphs'
     target_path = os.path.join(basepath, '{}.png'.format(video_id))
 
-    print(status)
-    graph_x = ','.join(status['second'].values.tolist())
-    graph_red = ','.join(status['red'].values.tolist())
-    graph_green = ','.join(status['red'].values.tolist())
+    # Extract features to generate graphs
+    graph_x = ','.join(status['second'].values.astype(str).tolist())
+    graph_red = ','.join(status['red'].values.astype(str).tolist())
+    graph_green = ','.join(status['green'].values.astype(str).tolist())
+    graph_chat = ','.join(chat['frequency'].values.astype(str).tolist())
 
     return render_template(
         'go.html',
@@ -339,5 +347,6 @@ def go():
         video_id = video_id,
         graph_x = graph_x,
         graph_red = graph_red,
-        graph_green = graph_green
+        graph_green = graph_green,
+        graph_chat = graph_chat
     )
