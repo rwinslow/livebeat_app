@@ -103,11 +103,15 @@ def get_health_status(img):
     # Initialize colors
     red = 0
     green = 0
-    red_sum = int(sum(v[115:140]))
-    green_sum = int(sum(v[85:105]))
+    # red_sum = int(sum(v[115:140]))
+    # green_sum = int(sum(v[85:105]))
+    red_sum = int(sum(h[1:15]))
+    green_sum = int(sum(h[55:65]))
     if red_sum > 0:
-        red = red_sum
+        # -25 for red dead baseline
+        red = red_sum - 25
     if green_sum > 0:
+        # -0 for green dead baseline
         green = green_sum
 
     return (red, green)
@@ -175,10 +179,30 @@ def segmenter(video_path, model, pca, threshold=0.5, seconds_between_frames=60):
     status = pd.DataFrame(statuses)
     status.columns = ['second', 'red', 'green', 'game']
 
-    red_full = 220
-    green_full = 30
-    status['red'] = status['red'].apply(lambda x: x/red_full).round(2)
-    status['green'] = status['green'].apply(lambda x: -1*x/green_full).round(2)
+    status.to_csv('/Users/Rich/Documents/Twitch/statuses/color_hist_check.csv')
+
+    if status['red'].min() < 0:
+        status['red'] = status['red'].apply(
+            lambda x: x + (-1 * status['red'].min())
+        )
+    elif status['red'].min() > 0:
+        status['red'] = status['red'].apply(
+            lambda x: x - status['red'].min()
+        )
+
+    if status['green'].min() < 0:
+        status['green'] = status['green'].apply(
+            lambda x: x + (-1 * status['green'].min())
+        )
+    elif status['green'].min() > 0:
+        status['green'] = status['green'].apply(
+            lambda x: x - status['green'].min()
+        )
+
+    red_max = status['red'].max()
+    green_max = status['green'].max()
+    status['red'] = status['red'].apply(lambda x: x/red_max).round(2)
+    status['green'] = status['green'].apply(lambda x: -1*x/green_max).round(2)
 
     return status
 
