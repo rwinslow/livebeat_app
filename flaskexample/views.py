@@ -153,39 +153,23 @@ def segmenter(video_path, model, pca, threshold=0.5, seconds_between_frames=60):
         features = np.array(features).reshape(1, -1)
         prediction = model.predict(features)
 
-        if prediction >= threshold and not start_time:
-            start_time = i
-        if prediction >= threshold and start_time:
-            statuses.append([int(i/fps), red, green])
-        if prediction <= threshold and start_time:
-            end_time = i
-            # Filter out short segments out
-            # fps (60) * step (30 sec) * n segments
-            if end_time - start_time > (60 * 30 * 6):
-                timecodes.append([start_time, end_time])
-                print('Found:', [start_time, end_time])
-                start_time = 0
-                end_time = 0
+        second = int(i/fps)
+        if prediction >= threshold:
+            statuses.append([second, red, green, 1])
+        else:
+            statuses.append([second, 0, 0, 0])
 
     # Close video handle to release thread and buffer
     vid.close()
 
     # Process timecodes and flip switches for found game segments
-    values = [0] * int(nframes/fps)
-    df = pd.DataFrame(values)
-    df.columns = ['game']
-    for row in timecodes:
-        start, stop = (row[0]/fps, row[1]/fps)
-        df.loc[(df.index >= start) & (df.index < stop), 'game'] = 1
-
-    statuses.insert(0, [0, 0, 0])
-    statuses.append([int(nframes/fps), 0, 0])
     status = pd.DataFrame(statuses)
-    status.columns = ['second', 'red', 'green']
+    status.columns = ['second', 'red', 'green', 'game']
+
     status['red'] = status['red'].apply(lambda x: x/220).round(2)
     status['green'] = status['green'].apply(lambda x: -1*x/220).round(2)
 
-    return df, status
+    return status
 
 def query_to_video(query):
     video_id = re.findall('\/(\d+)', query)[0]
@@ -329,26 +313,31 @@ def go():
     video_path = os.path.join(basepath, 'video', video_file)
     chat_path = os.path.join(basepath, 'chat', 'v{}'.format(video_id))
 
+    # Get chat data
+    chat = compile_chat(chat_path)
+
     # Get scene detector and acquire game timecodes
     positive_path = os.path.join(basepath, 'test_images_button')
     negative_path = os.path.join(basepath, 'test_images_non-button')
     model, pca = scene_detection(positive_path, negative_path)
 
-    game, status = segmenter(video_path, model, pca)
+    status = segmenter(video_path, model, pca)
     # game = TEMP_HAVE_STAMPS(video_id)
-
-    # Get chat data
-    chat = compile_chat(chat_path)
 
     # Build image for scrub plot
     basepath = '/Users/Rich/Documents/Flask/flaskexample/static/graphs'
     target_path = os.path.join(basepath, '{}.png'.format(video_id))
-    build_scrub_plot(target_path, game, chat)
 
     print(status)
+    graph_x = ','.join(status['second'].values.tolist())
+    graph_red = ','.join(status['red'].values.tolist())
+    graph_green = ','.join(status['red'].values.tolist())
 
     return render_template(
         'go.html',
         query = query,
         video_id = video_id,
+        graph_x = graph_x,
+        graph_red = graph_red,
+        graph_green = graph_green
     )
