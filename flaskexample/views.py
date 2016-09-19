@@ -98,7 +98,7 @@ def get_health_status(img):
     h = cv2.calcHist([hsv], [0], None, [256], [0,256])
     s = cv2.calcHist([hsv], [1], None, [256], [0,256])
     v = cv2.calcHist([hsv], [2], None, [256], [0,256])
-    hist[0] = 0 # Get rid of first element since it's black
+    h[0] = 0 # Get rid of first element since it's black
 
     # Initialize colors
     red = 0
@@ -175,9 +175,10 @@ def segmenter(video_path, model, pca, threshold=0.5, seconds_between_frames=60):
     status = pd.DataFrame(statuses)
     status.columns = ['second', 'red', 'green', 'game']
 
-    full_life = 220
-    status['red'] = status['red'].apply(lambda x: x/full_life).round(2)
-    status['green'] = status['green'].apply(lambda x: -1*x/full_life).round(2)
+    red_full = 220
+    green_full = 30
+    status['red'] = status['red'].apply(lambda x: x/red_full).round(2)
+    status['green'] = status['green'].apply(lambda x: -1*x/green_full).round(2)
 
     return status
 
