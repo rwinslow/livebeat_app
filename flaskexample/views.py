@@ -93,19 +93,18 @@ def get_health_status(img):
     x2 = int(np.round(w * (0.5 + factor)))
     pl_status[:, x1:x2, :] = 0
 
-    # Get each half of player health
-    pl_status = color.rgb2gray(pl_status)
-    green_half = pl_status[0:1, 0:int(w * .5)]
-    red_half = pl_status[0:1, int(w * .5):w]
+    img = pl_status[:,:,::-1] # Put player status from RGB to BGR for OpenCV
+    hsv = cv2.cvtColor(img,cv2.COLOR_BGR2HSV)
+    h = cv2.calcHist([hsv], [0], None, [256], [0,256])
+    s = cv2.calcHist([hsv], [1], None, [256], [0,256])
+    v = cv2.calcHist([hsv], [2], None, [256], [0,256])
 
-    # green_hist = Image.fromarray(green_half).histogram()
-    # red_hist = Image.fromarray(red_half).histogram()
+    # Initialize colors
+    red = int(sum(h[1:15]))
+    green = int(sum(h[50:65]))
 
-    # Get color sums
-    # red = int(sum(red_hist[120:150]))
-    # green = int(sum(green_hist[140:170]))
-    red = sum(red_half.ravel().tolist())
-    green = sum(green_half.ravel().tolist())
+    if red == 0 or green == 0:
+        return (0, 0)
 
     return (red, green)
 
@@ -146,9 +145,6 @@ def segmenter(video_path, model, pca, threshold=0.5, seconds_between_frames=60):
 
         # Get player status
         red, green = get_health_status(img)
-        Image.fromarray(red).save(
-            '/Users/Rich/Documents/Twitch/histograms/saved/{}.png'.format(i)
-        )
 
         # Generate predictions for each selected frame
         features = pca.transform(img2features(shop))
@@ -175,22 +171,26 @@ def segmenter(video_path, model, pca, threshold=0.5, seconds_between_frames=60):
     status = pd.DataFrame(statuses)
     status.columns = ['second', 'red', 'green', 'game']
 
-    status.to_csv('/Users/Rich/Documents/Twitch/statuses/color_hist_check.csv')
-
-    red_threshold = status['red'].mean() + 3*status['red'].std()
-    status.loc[
-            status['red'] > red_threshold, 'red'
-    ] = status['red'].median()
-
-    green_threshold = status['green'].mean() + 3*status['green'].std()
-    status.loc[
-            status['green'] > red_threshold, 'green'
-    ] = status['green'].median()
+    # status.to_csv('/Users/Rich/Documents/Twitch/statuses/color_hist_check.csv')
+    #
+    # red_threshold = status['red'].mean() + 3*status['red'].std()
+    # status.loc[
+    #         status['red'] > red_threshold, 'red'
+    # ] = status['red'].median()
+    #
+    # green_threshold = status['green'].mean() + 3*status['green'].std()
+    # status.loc[
+    #         status['green'] > red_threshold, 'green'
+    # ] = status['green'].median()
 
     red_max = status['red'].max()
     green_max = status['green'].max()
-    status['red'] = status['red'].apply(lambda x: x/red_max).round(2)
-    status['green'] = status['green'].apply(lambda x: -1*x/green_max).round(2)
+    status['red'] = status['red'].apply(
+            lambda x: x/red_max
+    ).round(2)
+    status['green'] = status['green'].apply(
+            lambda x: -1*x/green_max
+    ).round(2)
 
     return status
 
@@ -356,12 +356,12 @@ def go():
     model, pca = scene_detection(positive_path, negative_path)
 
     status = segmenter(video_path, model, pca)
-    status.to_csv('/Users/Rich/Documents/Twitch/statuses/test_value.csv')
+    # status.to_csv('/Users/Rich/Documents/Twitch/statuses/test_value.csv')
     # game = TEMP_HAVE_STAMPS(video_id)
 
     # Build image for scrub plot
-    basepath = '/Users/Rich/Documents/Flask/flaskexample/static/graphs'
-    target_path = os.path.join(basepath, '{}.png'.format(video_id))
+    # basepath = '/Users/Rich/Documents/Flask/flaskexample/static/graphs'
+    # target_path = os.path.join(basepath, '{}.png'.format(video_id))
 
     # Extract features to generate graphs
     graph_x = ','.join(status['second'].values.astype(str).tolist())

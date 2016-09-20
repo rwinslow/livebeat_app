@@ -172,7 +172,7 @@ form button {
     pointer-events: none;
     display: none;
     position: absolute;
-    margin-top: 262px;
+    margin-top: 290px;
     margin-left: 0;
     padding-left: 6px;
     z-index: 5;
@@ -187,17 +187,17 @@ form button {
 
 #red {
     color: red;
-    margin-top: 286px;
+    margin-top: 314px;
 }
 
 #green {
     color: green;
-    margin-top: 318px;
+    margin-top: 346px;
 }
 
 #chat {
     color: #126bda;
-    margin-top: 350px;
+    margin-top: 378px;
 }
 
 .c3, .c3 * {
