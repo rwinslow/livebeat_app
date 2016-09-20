@@ -84,7 +84,12 @@ def get_health_status(img):
     x1 = int(w * (0.5 - factor))
     y2 = y1+1
     x2 = int(w * (0.5 + factor))
-    pl_status = img[y1:y2, x1:x2, :]
+    # pl_status = img[y1:y2, x1:x2, :]
+    green_half = color.rgb2gray(img[y1:y2, x1:int(w * .5), :])
+    red_half = color.rgb2gray(img[y1:y2, int(w * .5):x2, :])
+
+    green_hist = cv2.calcHist([green_half], [0], None, [256], [0,256])
+    red_hist = cv2.calcHist([red_half], [0], None, [256], [0,256])
 
     # Block out center of player status
     h, w, c = pl_status.shape
@@ -109,7 +114,7 @@ def get_health_status(img):
     green_sum = int(sum(h[55:65]))
     if red_sum > 0:
         # -25 for red dead baseline
-        red = red_sum - 25
+        red = red_sum - 41
     if green_sum > 0:
         # -0 for green dead baseline
         green = green_sum
