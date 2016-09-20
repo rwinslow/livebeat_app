@@ -76,7 +76,7 @@ def scene_detection(positive_path, negative_path):
 
     return (model, pca)
 
-def get_health_status(img, i=0):
+def get_health_status(img, **kwargs):
     # Player status
     h, w, c = img.shape
     factor = 0.226
@@ -104,11 +104,11 @@ def get_health_status(img, i=0):
     green = int(sum(h[50:65]))
     if red == 0 or green == 0:
         return (0, 0)
-    else:
-        # Save image for validation
-        basepath = '/Volumes/Passport/LiveBeat/'
-        save_path = os.path.join(basepath, 'validation', '{}.png'.format(i))
-        Image.fromarray(pl_status).save(save_path)
+    # else:
+    #     # Save image for validation
+    #     basepath = '/Volumes/Passport/LiveBeat/'
+    #     save_path = os.path.join(basepath, 'validation', '{}.png'.format(i))
+    #     Image.fromarray(pl_status).save(save_path)
     return (red, green)
 
 def segmenter(video_path, model, pca, threshold=0.5, seconds_between_frames=60):
@@ -147,7 +147,7 @@ def segmenter(video_path, model, pca, threshold=0.5, seconds_between_frames=60):
         shop = img[y1:y2, x1:x2, :]
 
         # Get player status
-        red, green = get_health_status(img, i)
+        red, green = get_health_status(img, i=i)
 
         # Generate predictions for each selected frame
         features = pca.transform(img2features(shop))
