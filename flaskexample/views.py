@@ -76,7 +76,7 @@ def scene_detection(positive_path, negative_path):
 
     return (model, pca)
 
-def get_health_status(img):
+def get_health_status(img, i=0):
     # Player status
     h, w, c = img.shape
     factor = 0.226
@@ -93,8 +93,8 @@ def get_health_status(img):
     x2 = int(np.round(w * (0.5 + factor)))
     pl_status[:, x1:x2, :] = 0
 
-    img = pl_status[:,:,::-1] # Put player status from RGB to BGR for OpenCV
-    hsv = cv2.cvtColor(img,cv2.COLOR_BGR2HSV)
+    pl_status = pl_status[:,:,::-1] # Put player status from RGB to BGR for OpenCV
+    hsv = cv2.cvtColor(pl_status,cv2.COLOR_BGR2HSV)
     h = cv2.calcHist([hsv], [0], None, [256], [0,256])
     s = cv2.calcHist([hsv], [1], None, [256], [0,256])
     v = cv2.calcHist([hsv], [2], None, [256], [0,256])
@@ -102,10 +102,13 @@ def get_health_status(img):
     # Initialize colors
     red = int(sum(h[1:15]))
     green = int(sum(h[50:65]))
-
     if red == 0 or green == 0:
         return (0, 0)
-
+    else:
+        # Save image for validation
+        basepath = '/Volumes/Passport/LiveBeat/'
+        save_path = os.path.join(basepath, 'validation', '{}.png'.format(i))
+        Image.fromarray(pl_status).save(save_path)
     return (red, green)
 
 def segmenter(video_path, model, pca, threshold=0.5, seconds_between_frames=60):
@@ -144,7 +147,7 @@ def segmenter(video_path, model, pca, threshold=0.5, seconds_between_frames=60):
         shop = img[y1:y2, x1:x2, :]
 
         # Get player status
-        red, green = get_health_status(img)
+        red, green = get_health_status(img, i)
 
         # Generate predictions for each selected frame
         features = pca.transform(img2features(shop))
@@ -337,8 +340,8 @@ def test():
 @app.route('/go', methods=['POST'])
 def go():
     # Define basepath for file locations
-    # basepath = '/Volumes/Passport/LiveBeat/'
-    basepath = '/Users/Rich/Documents/Twitch'
+    basepath = '/Volumes/Passport/LiveBeat/'
+    # basepath = '/Users/Rich/Documents/Twitch'
 
     # Process query to identify video of request
     query = request.form['query']
