@@ -84,12 +84,7 @@ def get_health_status(img):
     x1 = int(w * (0.5 - factor))
     y2 = y1+1
     x2 = int(w * (0.5 + factor))
-    # pl_status = img[y1:y2, x1:x2, :]
-    green_half = color.rgb2gray(img[y1:y2, x1:int(w * .5), :])
-    red_half = color.rgb2gray(img[y1:y2, int(w * .5):x2, :])
-
-    green_hist = cv2.calcHist([green_half], [0], None, [256], [0,256])
-    red_hist = cv2.calcHist([red_half], [0], None, [256], [0,256])
+    pl_status = img[y1:y2, x1:x2, :]
 
     # Block out center of player status
     h, w, c = pl_status.shape
@@ -98,26 +93,19 @@ def get_health_status(img):
     x2 = int(np.round(w * (0.5 + factor)))
     pl_status[:, x1:x2, :] = 0
 
-    img = pl_status[:,:,::-1] # Put player status from RGB to BGR for OpenCV
-    hsv = cv2.cvtColor(img,cv2.COLOR_BGR2HSV)
-    h = cv2.calcHist([hsv], [0], None, [256], [0,256])
-    s = cv2.calcHist([hsv], [1], None, [256], [0,256])
-    v = cv2.calcHist([hsv], [2], None, [256], [0,256])
-    h[0] = 0 # Get rid of first element since it's black
+    # Get each half of player health
+    pl_status = color.rgb2gray(pl_status)
+    green_half = pl_status[0:1, 0:int(w * .5)]
+    red_half = pl_status[0:1, int(w * .5):w]
 
-    # Initialize colors
-    red = 0
-    green = 0
-    # red_sum = int(sum(v[115:140]))
-    # green_sum = int(sum(v[85:105]))
-    red_sum = int(sum(h[1:15]))
-    green_sum = int(sum(h[55:65]))
-    if red_sum > 0:
-        # -25 for red dead baseline
-        red = red_sum - 41
-    if green_sum > 0:
-        # -0 for green dead baseline
-        green = green_sum
+    # green_hist = Image.fromarray(green_half).histogram()
+    # red_hist = Image.fromarray(red_half).histogram()
+
+    # Get color sums
+    # red = int(sum(red_hist[120:150]))
+    # green = int(sum(green_hist[140:170]))
+    red = sum(red_half.ravel().tolist())
+    green = sum(green_half.ravel().tolist())
 
     return (red, green)
 
@@ -158,6 +146,9 @@ def segmenter(video_path, model, pca, threshold=0.5, seconds_between_frames=60):
 
         # Get player status
         red, green = get_health_status(img)
+        Image.fromarray(red).save(
+            '/Users/Rich/Documents/Twitch/histograms/saved/{}.png'.format(i)
+        )
 
         # Generate predictions for each selected frame
         features = pca.transform(img2features(shop))
@@ -186,23 +177,15 @@ def segmenter(video_path, model, pca, threshold=0.5, seconds_between_frames=60):
 
     status.to_csv('/Users/Rich/Documents/Twitch/statuses/color_hist_check.csv')
 
-    if status['red'].min() < 0:
-        status['red'] = status['red'].apply(
-            lambda x: x + (-1 * status['red'].min())
-        )
-    elif status['red'].min() > 0:
-        status['red'] = status['red'].apply(
-            lambda x: x - status['red'].min()
-        )
+    red_threshold = status['red'].mean() + 3*status['red'].std()
+    status.loc[
+            status['red'] > red_threshold, 'red'
+    ] = status['red'].median()
 
-    if status['green'].min() < 0:
-        status['green'] = status['green'].apply(
-            lambda x: x + (-1 * status['green'].min())
-        )
-    elif status['green'].min() > 0:
-        status['green'] = status['green'].apply(
-            lambda x: x - status['green'].min()
-        )
+    green_threshold = status['green'].mean() + 3*status['green'].std()
+    status.loc[
+            status['green'] > red_threshold, 'green'
+    ] = status['green'].median()
 
     red_max = status['red'].max()
     green_max = status['green'].max()
