@@ -76,41 +76,6 @@ def scene_detection(positive_path, negative_path):
 
     return (model, pca)
 
-def get_health_status(img, **kwargs):
-    # Player status
-    h, w, c = img.shape
-    factor = 0.226
-    y1 = int(h * 0.044)
-    x1 = int(w * (0.5 - factor))
-    y2 = y1+1
-    x2 = int(w * (0.5 + factor))
-    pl_status = img[y1:y2, x1:x2, :]
-
-    # Block out center of player status
-    h, w, c = pl_status.shape
-    factor = .12
-    x1 = int(np.round(w * (0.5 - factor)))+1
-    x2 = int(np.round(w * (0.5 + factor)))
-    pl_status[:, x1:x2, :] = 0
-
-    pl_status = pl_status[:,:,::-1] # Put player status from RGB to BGR for OpenCV
-    hsv = cv2.cvtColor(pl_status,cv2.COLOR_BGR2HSV)
-    h = cv2.calcHist([hsv], [0], None, [256], [0,256])
-    s = cv2.calcHist([hsv], [1], None, [256], [0,256])
-    v = cv2.calcHist([hsv], [2], None, [256], [0,256])
-
-    # Initialize colors
-    red = int(sum(h[1:15]))
-    green = int(sum(h[50:65]))
-    if red == 0 or green == 0:
-        return (0, 0)
-    # else:
-    #     # Save image for validation
-    #     basepath = '/Volumes/Passport/LiveBeat/'
-    #     save_path = os.path.join(basepath, 'validation', '{}.png'.format(i))
-    #     Image.fromarray(pl_status).save(save_path)
-    return (red, green)
-
 def segmenter(video_path, model, pca, threshold=0.5, seconds_between_frames=60):
     """Generate timecodes for game and non-game segments"""
 
@@ -130,6 +95,7 @@ def segmenter(video_path, model, pca, threshold=0.5, seconds_between_frames=60):
     timecodes = []
     statuses = []
     start_time = end_time = 0
+    segment = 1
 
     # Run through frames and find segments
     for i in frames:
@@ -146,9 +112,6 @@ def segmenter(video_path, model, pca, threshold=0.5, seconds_between_frames=60):
         y2 = y1 + 26
         shop = img[y1:y2, x1:x2, :]
 
-        # Get player status
-        red, green = get_health_status(img, i=i)
-
         # Generate predictions for each selected frame
         features = pca.transform(img2features(shop))
         features = np.array(features).reshape(1, -1)
@@ -156,44 +119,24 @@ def segmenter(video_path, model, pca, threshold=0.5, seconds_between_frames=60):
 
         second = int(i/fps)
         if prediction >= threshold:
-            statuses.append([second, red, green, 1])
+            statuses.append([second, segment])
         else:
-            statuses.append([second, 0, 0, 0])
+            segment += 1
+            statuses.append([second, 0])
 
     # Close video handle to release thread and buffer
     vid.close()
 
-    # Process status results and filter out short sections
-    for i in range(1, len(statuses)-3):
-        if (statuses[i][3] == 1
-            and statuses[i-1][3] == 0
-            and statuses[i+2][3] == 0):
-            statuses[i][1:] = (0, 0, 0)
-            statuses[i+1][1:] = (0, 0, 0)
+    # # Process status results and filter out short sections
+    # for i in range(1, len(statuses)-3):
+    #     if (statuses[i][3] >= 1
+    #         and statuses[i-1][3] == 0
+    #         and statuses[i+2][3] == 0):
+    #         statuses[i][1:] = (0, 0, 0)
+    #         statuses[i+1][1:] = (0, 0, 0)
 
     status = pd.DataFrame(statuses)
-    status.columns = ['second', 'red', 'green', 'game']
-
-    # status.to_csv('/Users/Rich/Documents/Twitch/statuses/color_hist_check.csv')
-    #
-    # red_threshold = status['red'].mean() + 3*status['red'].std()
-    # status.loc[
-    #         status['red'] > red_threshold, 'red'
-    # ] = status['red'].median()
-    #
-    # green_threshold = status['green'].mean() + 3*status['green'].std()
-    # status.loc[
-    #         status['green'] > red_threshold, 'green'
-    # ] = status['green'].median()
-
-    red_max = status['red'].max()
-    green_max = status['green'].max()
-    status['red'] = status['red'].apply(
-            lambda x: x/red_max
-    ).round(2)
-    status['green'] = status['green'].apply(
-            lambda x: -1*x/green_max
-    ).round(2)
+    status.columns = ['second', 'game']
 
     return status
 
@@ -251,82 +194,8 @@ def compile_chat(chat_path, seconds_per_bin=60):
         lambda x: int(round(x/1000/seconds_per_bin)*seconds_per_bin)
     )
 
-    # Create chat frequency data frame where index is no. of seconds into video
-    chat_freq = pd.DataFrame(df['secondstamp'].value_counts().sort_index())
-    chat_freq.columns = ['frequency']
-
-    # Normalize frequency for plotting
-    _max = chat_freq['frequency'].max()
-    _min = chat_freq['frequency'].min()
-    chat_freq['frequency'] = chat_freq['frequency'].apply(
-        lambda x: (x - _min) / (_max - _min)
-    )
-
-    chat_freq.to_csv('/Users/Rich/Documents/Twitch/chat_scale/test.csv')
-
-    return chat_freq
-
-def TEMP_HAVE_STAMPS(video_id):
-    # Open file handle
-    # basepath = '/Volumes/Passport/LiveBeat/'
-    basepath = '/Users/Rich/Documents/Twitch'
-    video_path = os.path.join(
-        basepath,
-        'video',
-        'dota2ti_v{}_720p30.mp4'.format(video_id)
-    )
-
-    vid = imageio.get_reader(video_path, 'ffmpeg')
-
-    # Get metadata and select 1 frame every n seconds
-    meta = vid.get_meta_data()
-    fps = int(np.round(meta['fps']))
-    nframes = meta['nframes']
-    frames = np.arange(0, nframes, 30*fps)
-
-    vid.close()
-
-    timecodes = [[36000, 39600],
-    [82800, 90000],
-    [241200, 244800],
-    [277200, 453600],
-    [475200, 478800],
-    [532800, 734400],
-    [788400, 792000],
-    [799200, 802800],
-    [896400, 1036800],
-    [1044000, 1047600],
-    [1134000, 1220400],
-    [1231200, 1234800],
-    [1285200, 1288800],
-    [1299600, 1303200],
-    [1335600, 1339200],
-    [1389600, 1573200],
-    [1677600, 1854000],]
-
-    # Process timecodes and flip switches for found game segments
-    values = [0] * int(nframes/fps)
-    df = pd.DataFrame(values)
-    df.columns = ['game']
-    for row in timecodes:
-        start, stop = (row[0]/fps, row[1]/fps)
-        # Filter out short segments of 120 seconds (4 * 30 sec)
-        if stop - start > 120:
-            df.loc[(df.index >= start) & (df.index < stop), 'game'] = 1
-
     return df
 
-def build_scrub_plot(target_path, game, chat):
-    fig, ax1 = plt.subplots(figsize=(18,2))
-    ax2 = ax1.twinx()
-    ax1.plot(game.index, game['game'], '.b', markersize=8)
-    ax2.plot(chat.index, chat['frequency'], '-r')
-    ax1.set_xlim([0, game.index.max()])
-
-    plt.savefig(
-        target_path,
-        bbox_inches='tight',
-    )
 
 @app.route('/')
 @app.route('/index')
@@ -359,17 +228,10 @@ def go():
     model, pca = scene_detection(positive_path, negative_path)
 
     status = segmenter(video_path, model, pca)
-    # status.to_csv('/Users/Rich/Documents/Twitch/statuses/test_value.csv')
-    # game = TEMP_HAVE_STAMPS(video_id)
-
-    # Build image for scrub plot
-    # basepath = '/Users/Rich/Documents/Flask/flaskexample/static/graphs'
-    # target_path = os.path.join(basepath, '{}.png'.format(video_id))
 
     # Extract features to generate graphs
     graph_x = ','.join(status['second'].values.astype(str).tolist())
-    graph_red = ','.join(status['red'].values.astype(str).tolist())
-    graph_green = ','.join(status['green'].values.astype(str).tolist())
+    graph_game = ','.join(status['game'].values.astype(str).tolist())
     graph_chat = ','.join(chat['frequency'].values.astype(str).tolist())
 
     return render_template(
@@ -377,7 +239,6 @@ def go():
         query = query,
         video_id = video_id,
         graph_x = graph_x,
-        graph_red = graph_red,
-        graph_green = graph_green,
+        graph_red = graph_game,
         graph_chat = graph_chat
     )

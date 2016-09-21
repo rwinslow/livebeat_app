@@ -34,8 +34,7 @@
             x: 'x',
             columns: [
                 ['x', {{ graph_x }}],
-                ['red', {{ graph_red }}],
-                ['green', {{ graph_green }}],
+                ['game', {{ graph_red }}],
                 ['chat', {{ graph_chat }}]
             ],
             type: 'area',
@@ -43,8 +42,7 @@
                 chat: 'area'
             },
             axes: {
-                red: 'y',
-                green: 'y',
+                game: 'y',
                 chat: 'y2'
             },
             axis: {
@@ -52,12 +50,8 @@
                     show: true,
                 }
             },
-            groups: [
-                ['red', 'green']
-            ],
             colors: {
-                red: 'red',
-                green: '#5ae90c',
+                game: 'red',
                 chat: '#126bda',
             }
         },
