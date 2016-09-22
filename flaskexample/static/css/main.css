@@ -172,9 +172,9 @@ form button {
     pointer-events: none;
     display: none;
     position: absolute;
-    margin-top: 290px;
+    margin-top: 363px;
     margin-left: 0;
-    padding-left: 6px;
+    padding-left: 15px;
     z-index: 5;
 }
 
