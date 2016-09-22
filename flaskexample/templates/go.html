@@ -8,9 +8,9 @@
             <div id="chart"></div>
         </div>
         <div id="midlayer">
-            <div id="red" class="label">Dire Health</div>
+            <!-- <div id="red" class="label">Dire Health</div>
             <div id="green" class="label">Radiant Health</div>
-            <div id="chat" class="label">Chat</div>
+            <div id="chat" class="label">Chat</div> -->
         </div>
         <div id="twitch-player"></div>
     </div>
@@ -34,25 +34,18 @@
             x: 'x',
             columns: [
                 ['x', {{ graph_x }}],
-                ['game', {{ graph_red }}],
-                ['chat', {{ graph_chat }}]
+                ['game', {{ graph_game }}],
+                ['chat', {{ graph_chat }}],
+                ['highlights', {{ graph_highlights }}]
             ],
             type: 'area',
             types: {
-                chat: 'area'
-            },
-            axes: {
-                game: 'y',
-                chat: 'y2'
-            },
-            axis: {
-                y2: {
-                    show: true,
-                }
+                chat: 'area',
+                highlights: 'bar'
             },
             colors: {
-                game: 'red',
-                chat: '#126bda',
+                // game: 'red',
+                // chat: '#126bda',
             }
         },
         interaction: {
@@ -64,10 +57,6 @@
                 show: false,
                 max: 1,
                 min: -3
-            },
-            y2: {
-                max: 2,
-                min: 0
             }
         },
         tooltip: {
