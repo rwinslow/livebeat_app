@@ -91,6 +91,12 @@ def segmenter(video_path, model, pca, threshold=0.5, seconds_between_frames=60):
     nframes = meta['nframes']
     frames = np.arange(0, nframes, seconds_between_frames*fps)
 
+    # Output details to console
+    print('Video:', video_path)
+    print('Frames:', nframes)
+    print('FPS:', fps)
+    print('Metadata:', meta)
+
     # Check frames
     timecodes = []
     statuses = []
@@ -236,69 +242,71 @@ def go():
     chat_path = os.path.join(basepath, 'chat', 'v{}'.format(video_id))
 
     # Get chat data
-    chat = compile_chat(chat_path)
+    try:
+        chat = compile_chat(chat_path)
 
-    # Segment chat by emotes
-    emotes = chat.loc[
-        chat['emote_count'] > 0, ['emote_count', 'secondstamp']
-    ]
-    no_emotes = chat.loc[
-        chat['emote_count'] == 0, ['emote_count', 'secondstamp']
-    ]
+        # Segment chat by emotes
+        emotes = chat.loc[
+            chat['emote_count'] > 0, ['emote_count', 'secondstamp']
+        ]
+        no_emotes = chat.loc[
+            chat['emote_count'] == 0, ['emote_count', 'secondstamp']
+        ]
 
-    # Create chat frequency data frame where index is no. of seconds into video
-    emotes_values = pd.DataFrame(
-        emotes['secondstamp'].value_counts().sort_index()
-    )
-    emotes_values.columns = ['frequency']
+        # Create chat frequency data frame where index is no. of seconds into video
+        emotes_values = pd.DataFrame(
+            emotes['secondstamp'].value_counts().sort_index()
+        )
+        emotes_values.columns = ['frequency']
 
-    # Normalize frequency for plotting
-    _max = emotes_values['frequency'].max()
-    _min = emotes_values['frequency'].min()
-    emotes_values['frequency'] = emotes_values['frequency'].apply(
-        lambda x: (x - _min) / (_max - _min)
-    )
-
-    # Create chat frequency data frame where index is no. of seconds into video
-    no_emotes_values = pd.DataFrame(
-        no_emotes['secondstamp'].value_counts().sort_index()
-    )
-    no_emotes_values.columns = ['frequency']
-
-    # Normalize frequency for plotting
-    _max = no_emotes_values['frequency'].max()
-    _min = no_emotes_values['frequency'].min()
-    no_emotes_values['frequency'] = no_emotes_values['frequency'].apply(
-        lambda x: (x - _min) / (_max - _min)
+        # Normalize frequency for plotting
+        _max = emotes_values['frequency'].max()
+        _min = emotes_values['frequency'].min()
+        emotes_values['frequency'] = emotes_values['frequency'].apply(
+            lambda x: (x - _min) / (_max - _min)
         )
 
+        # Create chat frequency data frame where index is no. of seconds into video
+        no_emotes_values = pd.DataFrame(
+            no_emotes['secondstamp'].value_counts().sort_index()
+        )
+        no_emotes_values.columns = ['frequency']
+
+        # Normalize frequency for plotting
+        _max = no_emotes_values['frequency'].max()
+        _min = no_emotes_values['frequency'].min()
+        no_emotes_values['frequency'] = no_emotes_values['frequency'].apply(
+            lambda x: (x - _min) / (_max - _min)
+            )
+
+        no_emotes_list = no_emotes_values['frequency'].values.astype(
+            str).tolist()
+    except:
+        # If there's no chat data
+        no_emotes_list = ['0']
 
     # Get scene detector and acquire sections where games are
     positive_path = os.path.join(basepath, 'test_images_button')
     negative_path = os.path.join(basepath, 'test_images_non-button')
     model, pca = scene_detection(positive_path, negative_path)
     status = segmenter(video_path, model, pca)
+    second_list = status['second'].values.astype(str).tolist()
+    game_list = [
+            '1' if v > 0 else '0' for v in status['game'].values.tolist()]
 
     # Identify highlights
-    highlights = get_highlights(status, no_emotes)
+    try:
+        highlights = get_highlights(status, no_emotes)
+        highlights_list = highlights['highlight'].values.astype(str).tolist()
+    except:
+        # If there's no chat data
+        highlights_list = ['0']
 
     # Extract features to generate graphs
-    graph_x = ','.join(status['second'].values.astype(str).tolist())
-
-    graph_game = ','.join(
-        [
-            '1' if v > 0 else '0'
-            for v in status['game'].values.tolist()
-        ]
-    )
-
-    graph_chat = ','.join(
-        no_emotes_values['frequency'].values.astype(str).tolist()
-    )
-
-    graph_highlights = ','.join(
-        highlights['highlight'].values.astype(str).tolist()
-    )
+    graph_x = ','.join(second_list)
+    graph_game = ','.join(game_list)
+    graph_chat = ','.join(no_emotes_list)
+    graph_highlights = ','.join(highlights_list)
 
     return render_template(
         'go.html',
