@@ -174,8 +174,33 @@ def compile_chat(chat_path, seconds_per_bin=60):
 
         return row
 
+    def agg_emotes(data):
+        """Aggregate JSON chat emotes into a row"""
+        attr = data['attributes']
+
+        timestamp = attr['timestamp']
+
+        try:
+            emotes = attr['tags']['emotes']
+            rows = []
+            for key in emotes.keys():
+                rows.append(
+                    {
+                        'timestamp': timestamp,
+                        'emote': key,
+                        'count': len(emotes[key])
+                    }
+                )
+            return rows
+        except AttributeError:
+            return [{'timestamp': timestamp,
+                    'emote': 0,
+                    'count': 0
+                   }]
+
     # Aggregate files into dictionary
-    aggregated = []
+    aggregate_chat = []
+    aggregate_emotes = []
     for f in file_list(chat_path):
         get_path = os.path.join(chat_path, f)
         with open(get_path) as c:
@@ -185,18 +210,28 @@ def compile_chat(chat_path, seconds_per_bin=60):
             data = json.loads(line)[0]
 
             for message in data['data']:
-                aggregated.append(agg_chat(message))
+                aggregate_chat.append(agg_chat(message))
+                aggregate_emotes.extend(agg_emotes(message))
 
     # Build data frame from chat results
-    df = pd.DataFrame(aggregated)
-    minimum = df['timestamp'].min()
-    maximum = df['timestamp'].max()
-    df['timestamp'] = df['timestamp'].apply(lambda x: x - minimum)
-    df['secondstamp'] = df['timestamp'].apply(
+    df_chat = pd.DataFrame(aggregate_chat)
+    minimum = df_chat['timestamp'].min()
+    maximum = df_chat['timestamp'].max()
+    df_chat['timestamp'] = df_chat['timestamp'].apply(lambda x: x - minimum)
+    df_chat['secondstamp'] = df_chat['timestamp'].apply(
         lambda x: int(round(x/1000/seconds_per_bin)*seconds_per_bin)
     )
 
-    return df
+    # Build data frame from chat results
+    df_emotes = pd.DataFrame(aggregate_emotes)
+    minimum = df_emotes['timestamp'].min()
+    maximum = df_emotes['timestamp'].max()
+    df_emotes['timestamp'] = df_emotes['timestamp'].apply(lambda x: x - minimum)
+    df_emotes['secondstamp'] = df_emotes['timestamp'].apply(
+        lambda x: int(round(x/1000/seconds_per_bin)*seconds_per_bin)
+    )
+
+    return df_chat, df_emotes
 
 def get_highlights(status, chat):
     games = status['game'].value_counts().index.tolist()[1:]
@@ -240,49 +275,67 @@ def go():
     video_path = os.path.join(basepath, 'video', video_file)
     chat_path = os.path.join(basepath, 'chat', 'v{}'.format(video_id))
 
-    # Get chat data
-    try:
-        chat = compile_chat(chat_path)
+    # Get chat and emote data
+    chat, emotes_deep = compile_chat(chat_path)
 
-        # Segment chat by emotes
-        emotes = chat.loc[
-            chat['emote_count'] > 0, ['emote_count', 'secondstamp']
-        ]
-        no_emotes = chat.loc[
-            chat['emote_count'] == 0, ['emote_count', 'secondstamp']
-        ]
+    # Get rid of rows without any emotes
+    # emotes_deep to dig into frequency of specific emotes
+    emotes_deep = emotes_deep[emotes_deep['emote'] != 0]
 
-        # Create chat frequency data frame where index is no. of seconds into video
-        emotes_values = pd.DataFrame(
-            emotes['secondstamp'].value_counts().sort_index()
+    # Segment chat by emotes
+    emotes = chat.loc[
+        chat['emote_count'] > 0, ['emote_count', 'secondstamp']
+    ]
+    no_emotes = chat.loc[
+        chat['emote_count'] == 0, ['emote_count', 'secondstamp']
+    ]
+
+    #
+    # PROCESS CHAT WITH EMOTES
+    #
+    emotes_values = pd.DataFrame(
+        emotes['secondstamp'].value_counts().sort_index()
+    )
+    emotes_values.columns = ['frequency']
+
+    # Normalize frequency for plotting
+    _max = emotes_values['frequency'].max()
+    _min = emotes_values['frequency'].min()
+    emotes_values['frequency'] = emotes_values['frequency'].apply(
+        lambda x: (x - _min) / (_max - _min)
+    )
+
+    emotes_list = emotes_values['frequency'].values.astype(str).tolist()
+
+    #
+    # PROCESS CHAT WITHOUT EMOTES
+    #
+    no_emotes_values = pd.DataFrame(
+        no_emotes['secondstamp'].value_counts().sort_index()
+    )
+    no_emotes_values.columns = ['frequency']
+
+    # Normalize frequency for plotting
+    _max = no_emotes_values['frequency'].max()
+    _min = no_emotes_values['frequency'].min()
+    no_emotes_values['frequency'] = no_emotes_values['frequency'].apply(
+        lambda x: (x - _min) / (_max - _min)
         )
-        emotes_values.columns = ['frequency']
 
-        # Normalize frequency for plotting
-        _max = emotes_values['frequency'].max()
-        _min = emotes_values['frequency'].min()
-        emotes_values['frequency'] = emotes_values['frequency'].apply(
-            lambda x: (x - _min) / (_max - _min)
-        )
+    no_emotes_list = no_emotes_values['frequency'].values.astype(
+        str).tolist()
 
-        # Create chat frequency data frame where index is no. of seconds into video
-        no_emotes_values = pd.DataFrame(
-            no_emotes['secondstamp'].value_counts().sort_index()
-        )
-        no_emotes_values.columns = ['frequency']
-
-        # Normalize frequency for plotting
-        _max = no_emotes_values['frequency'].max()
-        _min = no_emotes_values['frequency'].min()
-        no_emotes_values['frequency'] = no_emotes_values['frequency'].apply(
-            lambda x: (x - _min) / (_max - _min)
-            )
-
-        no_emotes_list = no_emotes_values['frequency'].values.astype(
-            str).tolist()
-    except:
-        # If there's no chat data
-        no_emotes_list = ['0']
+    #
+    # PROCESS CHAT MESSAGE LENGTH
+    #
+    chat['message_len'] = chat['message'].apply(lambda x: len(x))
+    chat_mean_list = chat.groupby('secondstamp')['message_len'].mean(
+        ).tolist()
+    _max = max(chat_mean_list)
+    _min = min(chat_mean_list)
+    chat_mean_list = [
+        str((v - _min)/(_max - _min)) for v in chat_mean_list
+    ]
 
     # Get scene detector and acquire sections where games are
     positive_path = os.path.join(basepath, 'test_images_button')
@@ -301,11 +354,13 @@ def go():
         # If there's no chat data
         highlights_list = ['0']
 
-    # Extract features to generate graphs
+    # Generate graph strings from lists
     graph_x = ','.join(second_list)
     graph_game = ','.join(game_list)
     graph_chat = ','.join(no_emotes_list)
     graph_highlights = ','.join(highlights_list)
+    graph_chat_len = ','.join(chat_mean_list)
+    graph_emote_chat = ','.join(emote_list)
 
     return render_template(
         'go.html',
@@ -314,5 +369,7 @@ def go():
         graph_x = graph_x,
         graph_game = graph_game,
         graph_chat = graph_chat,
-        graph_highlights = graph_highlights
+        graph_highlights = graph_highlights,
+        graph_chat_len = graph_chat_len,
+        graph_emote_chat = graph_emote_chat,
     )
