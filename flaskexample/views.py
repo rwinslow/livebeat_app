@@ -95,7 +95,6 @@ def segmenter(video_path, model, pca, threshold=0.5, seconds_between_frames=60):
     print('Video:', video_path)
     print('Frames:', nframes)
     print('FPS:', fps)
-    print('Metadata:', meta)
 
     # Check frames
     timecodes = []

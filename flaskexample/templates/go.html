@@ -8,9 +8,11 @@
             <div id="chart"></div>
         </div>
         <div id="midlayer">
-            <!-- <div id="red" class="label">Dire Health</div>
-            <div id="green" class="label">Radiant Health</div>
-            <div id="chat" class="label">Chat</div> -->
+            <div id="label-set">
+                <div id="label-game" class="label">Game</div>
+                <div id="label-highlight" class="label">Highlight</div>
+                <div id="label-chat" class="label">Chat</div>
+            </div>
         </div>
         <div id="twitch-player"></div>
     </div>
@@ -40,12 +42,13 @@
             ],
             type: 'area',
             types: {
-                chat: 'area',
-                highlights: 'bar'
+                highlights: 'bar',
+                chat: 'area'
             },
             colors: {
-                // game: 'red',
-                // chat: '#126bda',
+                game: '#0296ce',
+                chat: '#999999',
+                highlights: '#47ca00',
             }
         },
         interaction: {
@@ -75,7 +78,7 @@
             bottom: 0
         },
         bar: {
-            width: 2
+            width: 3
         },
         legend: {
             show: false
@@ -87,12 +90,12 @@
     window.onload = function() {
         $('#visuals').hover(
             function () {
-                $('#chart-wrap').fadeIn(250);
-                $('#midlayer').fadeIn(250);
+                $('#chart-wrap').fadeIn(225);
+                $('#midlayer').fadeIn(225);
             },
             function () {
-                $('#chart-wrap').fadeOut(250);
-                $('#midlayer').fadeOut(250);
+                $('#chart-wrap').fadeOut(225);
+                $('#midlayer').fadeOut(225);
             }
         )
     }
