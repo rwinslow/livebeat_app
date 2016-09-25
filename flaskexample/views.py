@@ -258,7 +258,7 @@ def get_highlights(status, chat):
 def index():
     return render_template('master.html')
 
-@app.route('/test')
+@app.route('/test', methods=['POST'])
 def test():
     return render_template('overlay_test.html')
 
