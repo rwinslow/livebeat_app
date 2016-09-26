@@ -154,8 +154,31 @@ form button {
     width: 854px;
 }
 
+#filter {
+    margin-top: 340px;
+    position: absolute;
+    text-align: center;
+    width: 854px;
+    z-index: 10;
+}
+
+#filter a {
+    border: 1px solid #666666;
+    color: #666666;
+    display: inline-block;
+    font-size: .8em;
+    text-align: center;
+    text-decoration: none;
+    width: 120px;
+}
+
+#filter a.highlighted {
+    border-color: #ffffff;
+    color: #ffffff;
+}
+
 #midlayer {
-    display: none;
+    /*display: none;*/
     pointer-events: none;
     position: absolute;
     z-index: 2;
@@ -171,7 +194,7 @@ form button {
 
 #chart-wrap {
     pointer-events: none;
-    display: none;
+    /*display: none;*/
     position: absolute;
     margin-top: 363px;
     margin-left: 0;

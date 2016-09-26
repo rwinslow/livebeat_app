@@ -4,6 +4,11 @@
     <script src= "http://player.twitch.tv/js/embed/v1.js"></script>
 
     <div id="visuals">
+        <div id="filter">
+            <a href="#" id="all-chat-graph">All Chat</a>
+            <a href="#" id="no-emotes-graph" class="highlighted">No Emotes</a>
+            <a href="#" id="emotes-graph">Emotes</a>
+        </div>
         <div id="chart-wrap">
             <div id="chart"></div>
         </div>
@@ -37,9 +42,8 @@
             columns: [
                 ['x', {{ graph_x }}],
                 ['game', {{ graph_game }}],
-                ['chat', {{ graph_chat }}],
-                ['highlights', {{ graph_highlights }}],
-                ['chat_len', {{ graph_chat_len }}]
+                ['chat', {{ graph_chat_no_emotes }}],
+                ['highlights', {{ graph_highlights_no_emotes }}],
             ],
             type: 'area',
             types: {
@@ -49,8 +53,7 @@
             colors: {
                 game: '#0296ce',
                 chat: '#999999',
-                highlights: '#47ca00',
-                chat_len: 'red'
+                highlights: '#47ca00'
             }
         },
         interaction: {
@@ -89,15 +92,56 @@
     </script>
 
     <script type="text/javascript">
+    function switch_all_chat() {
+        chart.load({
+            columns: [
+                ['chat', {{ graph_all_chat }}],
+                ['highlights', {{ graph_highlights_all_chat }}]
+            ]
+        });
+        $('.highlighted').removeClass('highlighted');
+        $('#all-chat-graph').attr('class', 'highlighted');
+    }
+
+    function switch_no_emotes_only() {
+        chart.load({
+            columns: [
+                ['chat', {{ graph_chat_no_emotes }}],
+                ['highlights', {{ graph_highlights_no_emotes }}]
+            ]
+        });
+        $('.highlighted').removeClass('highlighted');
+        $('#no-emotes-graph').attr('class', 'highlighted');
+    }
+
+    function switch_emotes_only() {
+        chart.load({
+            columns: [
+                ['chat', {{ graph_chat_emotes_only }}],
+                ['highlights', {{ graph_highlights_emotes }}]
+            ]
+        });
+        $('.highlighted').removeClass('highlighted');
+        $('#emotes-graph').attr('class', 'highlighted');
+    }
+
+    $('#all-chat-graph').click(switch_all_chat);
+    $('#emotes-graph').click(switch_emotes_only);
+    $('#no-emotes-graph').click(switch_no_emotes_only);
+    </script>
+
+    <script type="text/javascript">
     window.onload = function() {
         $('#visuals').hover(
             function () {
                 $('#chart-wrap').fadeIn(225);
                 $('#midlayer').fadeIn(225);
+                $('#filter').fadeIn(225);
             },
             function () {
                 $('#chart-wrap').fadeOut(225);
                 $('#midlayer').fadeOut(225);
+                $('#filter').fadeOut(225);
             }
         )
     }

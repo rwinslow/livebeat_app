@@ -253,12 +253,21 @@ def get_highlights(status, chat):
 
     return highlights
 
+def normalize_chat(chat):
+    _max = chat['frequency'].max()
+    _min = chat['frequency'].min()
+    chat['frequency'] = chat['frequency'].apply(
+        lambda x: (x - _min) / (_max - _min)
+        )
+
+    return chat
+
 @app.route('/')
 @app.route('/index')
 def index():
     return render_template('master.html')
 
-@app.route('/test', methods=['POST'])
+@app.route('/test', methods=['GET', 'POST'])
 def test():
     return render_template('overlay_test.html')
 
@@ -282,46 +291,36 @@ def go():
     # emotes_deep to dig into frequency of specific emotes
     emotes_deep = emotes_deep[emotes_deep['emote'] != 0]
 
-    # Segment chat by emotes
-    emotes = chat.loc[
-        chat['emote_count'] > 0, ['emote_count', 'secondstamp']
-    ]
-    no_emotes = chat.loc[
-        chat['emote_count'] == 0, ['emote_count', 'secondstamp']
-    ]
+    #
+    # PROCESS ALL CHAT
+    #
+    all_chat_values = pd.DataFrame(
+        chat['secondstamp'].value_counts().sort_index())
+    print(all_chat_values.head())
+    all_chat_values.columns = ['frequency']
+    all_chat_values = normalize_chat(all_chat_values)
+    all_chat_list = all_chat_values['frequency'].values.astype(str).tolist()
 
     #
     # PROCESS CHAT WITH EMOTES
     #
+    emotes = chat.loc[
+        chat['emote_count'] > 0, ['emote_count', 'secondstamp']]
     emotes_values = pd.DataFrame(
-        emotes['secondstamp'].value_counts().sort_index()
-    )
+        emotes['secondstamp'].value_counts().sort_index())
     emotes_values.columns = ['frequency']
-
-    # Normalize frequency for plotting
-    _max = emotes_values['frequency'].max()
-    _min = emotes_values['frequency'].min()
-    emotes_values['frequency'] = emotes_values['frequency'].apply(
-        lambda x: (x - _min) / (_max - _min)
-    )
-
+    emotes_values = normalize_chat(emotes_values)
     emotes_list = emotes_values['frequency'].values.astype(str).tolist()
 
     #
     # PROCESS CHAT WITHOUT EMOTES
     #
+    no_emotes = chat.loc[
+        chat['emote_count'] == 0, ['emote_count', 'secondstamp']]
     no_emotes_values = pd.DataFrame(
-        no_emotes['secondstamp'].value_counts().sort_index()
-    )
+        no_emotes['secondstamp'].value_counts().sort_index())
     no_emotes_values.columns = ['frequency']
-
-    # Normalize frequency for plotting
-    _max = no_emotes_values['frequency'].max()
-    _min = no_emotes_values['frequency'].min()
-    no_emotes_values['frequency'] = no_emotes_values['frequency'].apply(
-        lambda x: (x - _min) / (_max - _min)
-        )
-
+    no_emotes_values = normalize_chat(no_emotes_values)
     no_emotes_list = no_emotes_values['frequency'].values.astype(
         str).tolist()
 
@@ -346,21 +345,31 @@ def go():
     game_list = [
             '1' if v > 0 else '0' for v in status['game'].values.tolist()]
 
-    # Identify highlights
-    try:
-        highlights = get_highlights(status, no_emotes)
-        highlights_list = highlights['highlight'].values.astype(str).tolist()
-    except:
-        # If there's no chat data
-        highlights_list = ['0']
+    # Identify highlights in game sections
+    highlights_no_emotes = get_highlights(status, no_emotes)
+    highlights_no_emotes_list = highlights_no_emotes[
+        'highlight'].values.astype(str).tolist()
+
+    highlights_emotes = get_highlights(status, emotes)
+    highlights_emotes_list = highlights_emotes[
+        'highlight'].values.astype(str).tolist()
+
+    highlights_all_chat = get_highlights(status, chat)
+    highlights_all_chat_list = highlights_all_chat[
+        'highlight'].values.astype(str).tolist()
 
     # Generate graph strings from lists
     graph_x = ','.join(second_list)
     graph_game = ','.join(game_list)
-    graph_chat = ','.join(no_emotes_list)
-    graph_highlights = ','.join(highlights_list)
-    graph_chat_len = ','.join(chat_mean_list)
-    graph_emote_chat = ','.join(emote_list)
+
+    graph_all_chat = ','.join(all_chat_list)
+    graph_chat_no_emotes = ','.join(no_emotes_list)
+    graph_chat_emotes_only = ','.join(emotes_list)
+    graph_chat_message_len = ','.join(chat_mean_list)
+
+    graph_highlights_no_emotes = ','.join(highlights_no_emotes_list)
+    graph_highlights_emotes = ','.join(highlights_emotes_list)
+    graph_highlights_all_chat = ','.join(highlights_all_chat_list)
 
     return render_template(
         'go.html',
@@ -368,8 +377,13 @@ def go():
         video_id = video_id,
         graph_x = graph_x,
         graph_game = graph_game,
-        graph_chat = graph_chat,
-        graph_highlights = graph_highlights,
-        graph_chat_len = graph_chat_len,
-        graph_emote_chat = graph_emote_chat,
+
+        graph_all_chat = graph_all_chat,
+        graph_chat_no_emotes = graph_chat_no_emotes,
+        graph_chat_message_len = graph_chat_message_len,
+        graph_chat_emotes_only = graph_chat_emotes_only,
+
+        graph_highlights_no_emotes = graph_highlights_no_emotes,
+        graph_highlights_emotes = graph_highlights_emotes,
+        graph_highlights_all_chat = graph_highlights_all_chat,
     )

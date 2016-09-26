@@ -9,6 +9,10 @@
 
         <link rel="apple-touch-icon" href="apple-touch-icon.png">
 
+        <!-- jQuery -->
+        <script src="/static/js/jquery/jquery-1.12.0.min.js"></script>
+        <script>window.jQuery || document.write('<script src="js/vendor/jquery-1.12.0.min.js"><\/script>')</script>
+
         <!-- Load c3.css -->
         <link href="/static/js/c3/c3.css" rel="stylesheet" type="text/css">
 
@@ -27,14 +31,12 @@
 
         {% block content %}
         <!-- <form method="post" action="/go"> -->
-        <form method="post" action="/test">
+        <form method="post" action="/go">
             <input type="text" name="query" placeholder="URL to Twitch Dota2 video to highlight" value="https://www.twitch.tv/dota2ti/v/83196893">
             <button type="submit" name="push">Submit</button>
         </form>
         {% endblock %}
 
-        <script src="/static/js/jquery/jquery-1.12.0.min.js"></script>
-        <script>window.jQuery || document.write('<script src="js/vendor/jquery-1.12.0.min.js"><\/script>')</script>
         <script src="/static/js/plugins.js"></script>
         <script src="/static/js/main.js"></script>
 
