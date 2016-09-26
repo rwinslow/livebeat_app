@@ -371,6 +371,27 @@ def go():
     graph_highlights_emotes = ','.join(highlights_emotes_list)
     graph_highlights_all_chat = ','.join(highlights_all_chat_list)
 
+    kwargs_out = {
+        'query': query,
+        'video_id': video_id,
+        'graph_x': graph_x,
+        'graph_game': graph_game,
+
+        'graph_all_chat': graph_all_chat,
+        'graph_chat_no_emotes': graph_chat_no_emotes,
+        'graph_chat_message_len': graph_chat_message_len,
+        'graph_chat_emotes_only': graph_chat_emotes_only,
+
+        'graph_highlights_no_emotes': graph_highlights_no_emotes,
+        'graph_highlights_emotes': graph_highlights_emotes,
+        'graph_highlights_all_chat': graph_highlights_all_chat,
+    }
+
+    # Save arguments to cache for AWS display
+    json_base = '/Users/Rich/Documents/Flask/flaskexample/static/cache'
+    with open(os.path.join(json_base, '{}.json'.format(video_id)), 'w') as f:
+        json.dump(kwargs_out, f)
+
     return render_template(
         'go.html',
         query = query,
